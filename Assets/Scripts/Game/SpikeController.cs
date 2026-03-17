@@ -11,54 +11,95 @@ public class SpikeController : MonoBehaviour
     [Header("Spike Hit Behaviour")]
     public float pushForce = 3f;
     public Vector3 pushDirection = Vector3.left; // direction to push the player
+    public bool pushAlongMovementDirection = true;
     public string playerTag = "Player";          // tag used to identify the player
 
     private Rigidbody _rb;
-    private bool _hasHitPlayer;
 
     private void Awake()
     {
         _rb = GetComponent<Rigidbody>();
-        // Let the script control movement; disable physics forces if desired.
         _rb.isKinematic = true;
         _rb.useGravity = false;
+        _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
     }
 
-    private void Update()
+    private void FixedUpdate()
     {
-        // Move in configurable world-space direction
         Vector3 dir = moveDirection.sqrMagnitude > 0f ? moveDirection.normalized : Vector3.left;
-        transform.Translate(dir * speed * Time.deltaTime, Space.World);
+        Vector3 targetPosition = _rb.position + (dir * speed * Time.fixedDeltaTime);
+        _rb.MovePosition(targetPosition);
 
-        // Simple X-based destroy logic that works for both left and right movement:
-        // - If moving with negative X (left), destroy when x < destroyX
-        // - If moving with positive X (right), destroy when x > destroyX
-        if (dir.x < 0f && transform.position.x < destroyX)
+        if (dir.x < 0f && _rb.position.x < destroyX)
         {
             Destroy(gameObject);
         }
-        else if (dir.x > 0f && transform.position.x > destroyX)
+        else if (dir.x > 0f && _rb.position.x > destroyX)
         {
             Destroy(gameObject);
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void OnCollisionEnter(Collision collision)
     {
-        if (_hasHitPlayer)
-            return;
+        ApplyPush(collision.collider, ForceMode.VelocityChange, 2f);
+    }
 
-        // If a player tag is specified, filter by tag
-        if (!string.IsNullOrEmpty(playerTag) && !other.CompareTag(playerTag))
-            return;
+    private void OnCollisionStay(Collision collision)
+    {
+        ApplyPush(collision.collider, ForceMode.Acceleration, pushForce);
+    }
 
-        Rigidbody otherRb = other.attachedRigidbody;
-        if (otherRb != null)
+    private Rigidbody ResolvePlayerRigidbody(Collider other)
+    {
+        if (other == null)
         {
-            _hasHitPlayer = true;
-            otherRb.AddForce(pushDirection.normalized * pushForce, ForceMode.Impulse);
-            Destroy(gameObject, 0.1f);
+            return null;
         }
+
+        if (MatchesPlayer(other.gameObject))
+        {
+            return other.attachedRigidbody != null ? other.attachedRigidbody : other.GetComponent<Rigidbody>();
+        }
+
+        if (other.attachedRigidbody != null && MatchesPlayer(other.attachedRigidbody.gameObject))
+        {
+            return other.attachedRigidbody;
+        }
+
+        Transform root = other.transform.root;
+        if (root != null && MatchesPlayer(root.gameObject))
+        {
+            return root.GetComponent<Rigidbody>();
+        }
+
+        return null;
+    }
+
+    private bool MatchesPlayer(GameObject candidate)
+    {
+        return candidate != null && (string.IsNullOrEmpty(playerTag) || candidate.CompareTag(playerTag));
+    }
+
+    private Vector3 GetPushDirection()
+    {
+        Vector3 direction = pushAlongMovementDirection && moveDirection.sqrMagnitude > Mathf.Epsilon
+            ? moveDirection
+            : pushDirection;
+
+        return direction.sqrMagnitude > Mathf.Epsilon ? direction : Vector3.right;
+    }
+
+    private void ApplyPush(Collider other, ForceMode forceMode, float forceAmount)
+    {
+        Rigidbody playerRigidbody = ResolvePlayerRigidbody(other);
+        if (playerRigidbody == null)
+        {
+            return;
+        }
+
+        Vector3 direction = GetPushDirection();
+        playerRigidbody.AddForce(direction.normalized * forceAmount, forceMode);
     }
 }
 
