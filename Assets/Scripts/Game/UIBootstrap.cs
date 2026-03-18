@@ -2,6 +2,7 @@ using System.Reflection;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public static class UIBootstrap
@@ -10,6 +11,18 @@ public static class UIBootstrap
     private static readonly BindingFlags FieldFlags = BindingFlags.Instance | BindingFlags.NonPublic;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Initialize()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        EnsureUi();
+    }
+
+    private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        EnsureUi();
+    }
+
     private static void EnsureUi()
     {
         Time.timeScale = 1f;

@@ -9,10 +9,11 @@ public class SpikeController : MonoBehaviour
     public float destroyX = -20f;                // X position at which to destroy (see logic below)
 
     [Header("Spike Hit Behaviour")]
-    public float pushForce = 3f;
-    public Vector3 pushDirection = Vector3.left; // direction to push the player
+    public float pushForce = 15f;
+    public float hitPushBurst = 12f;
+    public Vector3 pushDirection = Vector3.left;
     public bool pushAlongMovementDirection = true;
-    public string playerTag = "Player";          // tag used to identify the player
+    public string playerTag = "Player";
 
     private Rigidbody _rb;
 
@@ -47,12 +48,12 @@ public class SpikeController : MonoBehaviour
 
     private void OnCollisionEnter(Collision collision)
     {
-        ApplyPush(collision.collider, ForceMode.VelocityChange, 2f);
+        ApplyPush(collision.collider, ForceMode.VelocityChange, hitPushBurst);
     }
 
     private void OnCollisionStay(Collision collision)
     {
-        ApplyPush(collision.collider, ForceMode.Acceleration, pushForce);
+        ApplyPush(collision.collider, ForceMode.VelocityChange, pushForce * Time.fixedDeltaTime);
     }
 
     private Rigidbody ResolvePlayerRigidbody(Collider other)

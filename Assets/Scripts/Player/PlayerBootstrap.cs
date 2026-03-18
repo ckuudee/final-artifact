@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public static class PlayerBootstrap
 {
@@ -12,6 +13,18 @@ public static class PlayerBootstrap
     private const string GroundObjectName = "Cube";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void Initialize()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        SceneManager.sceneLoaded += OnSceneLoaded;
+        SpawnPlayer();
+    }
+
+    private static void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        SpawnPlayer();
+    }
+
     private static void SpawnPlayer()
     {
         ConfigureSceneHazards();

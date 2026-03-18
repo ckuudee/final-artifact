@@ -22,16 +22,15 @@ public class PlayerLaneController : MonoBehaviour
     [SerializeField] private float rotationLerpSpeed = 14f;
 
     [Header("Player Collider")]
-    // Collider settings are authored in world units so they remain correct on the 3x-scaled player.
     [SerializeField] private bool autoFitColliderToRenderers = false;
-    [SerializeField] private float standingColliderHeight = 4.2f;
-    [SerializeField] private float duckingColliderHeight = 2.1f;
-    [SerializeField] private float colliderRadius = 0.55f;
-    [SerializeField] private Vector3 standingColliderCenter = new Vector3(0f, 2.1f, 0f);
-    [SerializeField] private Vector3 duckingColliderCenter = new Vector3(0f, 1.05f, 0f);
-    [SerializeField] private float minimumStandingColliderHeight = 4.2f;
+    [SerializeField] private float standingColliderHeight = 14f;
+    [SerializeField] private float duckingColliderHeight = 7f;
+    [SerializeField] private float colliderRadius = 1.8f;
+    [SerializeField] private Vector3 standingColliderCenter = new Vector3(0f, 7f, 0f);
+    [SerializeField] private Vector3 duckingColliderCenter = new Vector3(0f, 3.5f, 0f);
+    [SerializeField] private float minimumStandingColliderHeight = 14f;
     [SerializeField] private float duckingHeightFactor = 0.5f;
-    [SerializeField] private float maximumDuckingColliderHeight = 2.1f;
+    [SerializeField] private float maximumDuckingColliderHeight = 7f;
 
     [Header("Grounding")]
     [SerializeField] private float groundCheckRadius = 0.3f;

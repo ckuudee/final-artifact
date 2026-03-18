@@ -70,6 +70,8 @@ public class UIManager : MonoBehaviour
     // just reload the scene
     private void OnReplayClicked()
     {
+        Time.timeScale = 1f;
+        Instance = null;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 }
