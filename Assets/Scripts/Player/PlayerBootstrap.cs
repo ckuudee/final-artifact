@@ -9,7 +9,7 @@ public static class PlayerBootstrap
     private const float DefaultSpawnX = 15f;
     private const float DefaultSpawnZ = 0f;
     private const float SpawnOffsetFromSpawner = 70f;
-    private const float PlayerScale = 10f;
+    private const float PlayerScale = 3f;
     private const string GroundObjectName = "Cube";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
