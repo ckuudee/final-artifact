@@ -1,77 +1,319 @@
-using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 using TMPro;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
-    public static UIManager Instance; // so other scripts can access this easily
+    private const string BestScoreKey = "UIManager.BestScore";
+    private const string BestTimeKey = "UIManager.BestTime";
+    private const string BestLogsKey = "UIManager.BestLogs";
+    private const int ScorePerLog = 100;
+    private const float ScorePerSecond = 10f;
+
+    public static UIManager Instance;
 
     [Header("Screens")]
+    [SerializeField] private GameObject startScreen;
     [SerializeField] private GameObject hudScreen;
     [SerializeField] private GameObject gameOverScreen;
+
+    [Header("Start Screen")]
+    [SerializeField] private TextMeshProUGUI startBestText;
+    [SerializeField] private Button playButton;
 
     [Header("HUD Elements")]
     [SerializeField] private TextMeshProUGUI scoreText;
     [SerializeField] private TextMeshProUGUI timerText;
+    [SerializeField] private TextMeshProUGUI logsText;
+    [SerializeField] private TextMeshProUGUI bestScoreText;
 
     [Header("Game Over Elements")]
     [SerializeField] private TextMeshProUGUI finalScoreText;
+    [SerializeField] private TextMeshProUGUI finalBreakdownText;
+    [SerializeField] private TextMeshProUGUI bestResultText;
     [SerializeField] private Button replayButton;
 
-    private float _survivalTime = 0f;
-    private bool _gameOver = false;
+    private float _survivalTime;
+    private int _logsPassed;
+    private bool _gameOver;
+    private bool _gameStarted;
+    private int _bestScore;
+    private float _bestTime;
+    private int _bestLogs;
 
     private void Awake()
     {
-        // make sure only one UIManager exists at a time
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        LoadBestRun();
     }
 
     private void Start()
     {
-        // hook up replay button and show the HUD at the start
-        replayButton?.onClick.AddListener(OnReplayClicked);
-        hudScreen?.SetActive(true);
-        gameOverScreen?.SetActive(false);
+        InitializeUi();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
     }
 
     private void Update()
     {
-        if (_gameOver) return;
+        if (!IsRunActive())
+        {
+            return;
+        }
 
-        // keep track of how long the player has survived
         _survivalTime += Time.deltaTime;
-
-        // score is just time * 10 for now
-        if (scoreText != null)
-            scoreText.text = "Score: " + Mathf.FloorToInt(_survivalTime * 10).ToString();
-
-        if (timerText != null)
-            timerText.text = "Time: " + Mathf.FloorToInt(_survivalTime).ToString() + "s";
+        RefreshHud();
     }
 
-    // call this when the player dies
-    // need to hook this into player death logic once thats implemented
+    public void InitializeUi()
+    {
+        BindButtons();
+        ShowStartScreen();
+        RefreshAllUi();
+    }
+
+    public void RegisterPassedLog()
+    {
+        if (!IsRunActive())
+        {
+            return;
+        }
+
+        _logsPassed++;
+        RefreshHud();
+    }
+
     public void TriggerGameOver()
     {
-        if (_gameOver) return;
+        if (_gameOver)
+        {
+            return;
+        }
+
         _gameOver = true;
+        _gameStarted = false;
 
-        // swap screens
-        hudScreen?.SetActive(false);
-        gameOverScreen?.SetActive(true);
+        int finalScore = CalculateScore(_survivalTime, _logsPassed);
+        UpdateBestRun(finalScore, _survivalTime, _logsPassed);
 
-        if (finalScoreText != null)
-            finalScoreText.text = "Final Score: " + Mathf.FloorToInt(_survivalTime * 10).ToString();
+        if (startScreen != null)
+        {
+            startScreen.SetActive(false);
+        }
+
+        if (hudScreen != null)
+        {
+            hudScreen.SetActive(false);
+        }
+
+        if (gameOverScreen != null)
+        {
+            gameOverScreen.SetActive(true);
+        }
+
+        RefreshGameOver(finalScore);
+        Time.timeScale = 0f;
     }
 
-    // just reload the scene
+    private void BindButtons()
+    {
+        if (playButton != null)
+        {
+            playButton.onClick.RemoveListener(OnPlayClicked);
+            playButton.onClick.AddListener(OnPlayClicked);
+        }
+
+        if (replayButton != null)
+        {
+            replayButton.onClick.RemoveListener(OnReplayClicked);
+            replayButton.onClick.AddListener(OnReplayClicked);
+        }
+    }
+
+    private void OnPlayClicked()
+    {
+        BeginRun();
+    }
+
     private void OnReplayClicked()
     {
         Time.timeScale = 1f;
-        Instance = null;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+    }
+
+    private void BeginRun()
+    {
+        _survivalTime = 0f;
+        _logsPassed = 0;
+        _gameOver = false;
+        _gameStarted = true;
+
+        if (startScreen != null)
+        {
+            startScreen.SetActive(false);
+        }
+
+        if (hudScreen != null)
+        {
+            hudScreen.SetActive(true);
+        }
+
+        if (gameOverScreen != null)
+        {
+            gameOverScreen.SetActive(false);
+        }
+
+        Time.timeScale = 1f;
+        RefreshHud();
+    }
+
+    private void ShowStartScreen()
+    {
+        _survivalTime = 0f;
+        _logsPassed = 0;
+        _gameOver = false;
+        _gameStarted = false;
+
+        if (startScreen != null)
+        {
+            startScreen.SetActive(true);
+        }
+
+        if (hudScreen != null)
+        {
+            hudScreen.SetActive(false);
+        }
+
+        if (gameOverScreen != null)
+        {
+            gameOverScreen.SetActive(false);
+        }
+
+        Time.timeScale = 0f;
+    }
+
+    private void RefreshAllUi()
+    {
+        RefreshHud();
+        RefreshStartScreen();
+        RefreshGameOver(CalculateScore(_survivalTime, _logsPassed));
+    }
+
+    private void RefreshHud()
+    {
+        int score = CalculateScore(_survivalTime, _logsPassed);
+
+        if (scoreText != null)
+        {
+            scoreText.text = $"Score: {score}";
+        }
+
+        if (timerText != null)
+        {
+            timerText.text = $"Time: {FormatSeconds(_survivalTime)}";
+        }
+
+        if (logsText != null)
+        {
+            logsText.text = $"Logs: {_logsPassed}";
+        }
+
+        if (bestScoreText != null)
+        {
+            bestScoreText.text = $"Best: {BuildBestRunLabel()}";
+        }
+    }
+
+    private void RefreshStartScreen()
+    {
+        if (startBestText != null)
+        {
+            startBestText.text = $"Best Run\n{BuildBestRunLabel()}";
+        }
+    }
+
+    private void RefreshGameOver(int finalScore)
+    {
+        if (finalScoreText != null)
+        {
+            finalScoreText.text = $"Final Score: {finalScore}";
+        }
+
+        if (finalBreakdownText != null)
+        {
+            finalBreakdownText.text = $"Logs Passed: {_logsPassed} | Time: {FormatSeconds(_survivalTime)}";
+        }
+
+        if (bestResultText != null)
+        {
+            bestResultText.text = $"Best Run: {BuildBestRunLabel()}";
+        }
+    }
+
+    private void UpdateBestRun(int score, float survivalTime, int logsPassed)
+    {
+        bool beatBest = score > _bestScore;
+        bool tieOnScore = score == _bestScore;
+        bool beatOnTime = tieOnScore && survivalTime > _bestTime;
+        bool beatOnLogs = tieOnScore && Mathf.Approximately(survivalTime, _bestTime) && logsPassed > _bestLogs;
+
+        if (!beatBest && !beatOnTime && !beatOnLogs)
+        {
+            return;
+        }
+
+        _bestScore = score;
+        _bestTime = survivalTime;
+        _bestLogs = logsPassed;
+
+        PlayerPrefs.SetInt(BestScoreKey, _bestScore);
+        PlayerPrefs.SetFloat(BestTimeKey, _bestTime);
+        PlayerPrefs.SetInt(BestLogsKey, _bestLogs);
+        PlayerPrefs.Save();
+    }
+
+    private void LoadBestRun()
+    {
+        _bestScore = PlayerPrefs.GetInt(BestScoreKey, 0);
+        _bestTime = PlayerPrefs.GetFloat(BestTimeKey, 0f);
+        _bestLogs = PlayerPrefs.GetInt(BestLogsKey, 0);
+    }
+
+    private bool IsRunActive()
+    {
+        return _gameStarted && !_gameOver && Time.timeScale > 0f;
+    }
+
+    private static int CalculateScore(float survivalTime, int logsPassed)
+    {
+        int timeScore = Mathf.FloorToInt(Mathf.Max(0f, survivalTime) * ScorePerSecond);
+        int logScore = Mathf.Max(0, logsPassed) * ScorePerLog;
+        return timeScore + logScore;
+    }
+
+    private string BuildBestRunLabel()
+    {
+        return $"Score {_bestScore} | Logs {_bestLogs} | Time {FormatSeconds(_bestTime)}";
+    }
+
+    private static string FormatSeconds(float seconds)
+    {
+        return $"{Mathf.Max(0f, seconds):0.0}s";
     }
 }

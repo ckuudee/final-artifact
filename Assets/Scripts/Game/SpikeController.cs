@@ -16,6 +16,7 @@ public class SpikeController : MonoBehaviour
     public string playerTag = "Player";
 
     private Rigidbody _rb;
+    private bool _countedAsPassed;
 
     private void Awake()
     {
@@ -38,11 +39,11 @@ public class SpikeController : MonoBehaviour
 
         if (dir.x < 0f && _rb.position.x < destroyX)
         {
-            Destroy(gameObject);
+            RegisterPassedLogAndDestroy();
         }
         else if (dir.x > 0f && _rb.position.x > destroyX)
         {
-            Destroy(gameObject);
+            RegisterPassedLogAndDestroy();
         }
     }
 
@@ -106,6 +107,17 @@ public class SpikeController : MonoBehaviour
 
         Vector3 direction = GetPushDirection();
         playerRigidbody.AddForce(direction.normalized * forceAmount, forceMode);
+    }
+
+    private void RegisterPassedLogAndDestroy()
+    {
+        if (!_countedAsPassed)
+        {
+            _countedAsPassed = true;
+            UIManager.Instance?.RegisterPassedLog();
+        }
+
+        Destroy(gameObject);
     }
 }
 

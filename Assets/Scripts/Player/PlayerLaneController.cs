@@ -22,15 +22,19 @@ public class PlayerLaneController : MonoBehaviour
     [SerializeField] private float rotationLerpSpeed = 14f;
 
     [Header("Player Collider")]
+    // Collider settings are authored in world units so they remain correct on the 3x-scaled player.
     [SerializeField] private bool autoFitColliderToRenderers = false;
-    [SerializeField] private float standingColliderHeight = 14f;
-    [SerializeField] private float duckingColliderHeight = 7f;
-    [SerializeField] private float colliderRadius = 1.8f;
-    [SerializeField] private Vector3 standingColliderCenter = new Vector3(0f, 7f, 0f);
-    [SerializeField] private Vector3 duckingColliderCenter = new Vector3(0f, 3.5f, 0f);
-    [SerializeField] private float minimumStandingColliderHeight = 14f;
+    [SerializeField] private float standingColliderHeight = 4.2f;
+    [SerializeField] private float duckingColliderHeight = 2.1f;
+    [SerializeField] private float colliderRadius = 0.55f;
+    [SerializeField] private Vector3 standingColliderCenter = new Vector3(0f, 2.1f, 0f);
+    [SerializeField] private Vector3 duckingColliderCenter = new Vector3(0f, 1.05f, 0f);
+    [SerializeField] private float minimumStandingColliderHeight = 4.2f;
     [SerializeField] private float duckingHeightFactor = 0.5f;
-    [SerializeField] private float maximumDuckingColliderHeight = 7f;
+    [SerializeField] private float maximumDuckingColliderHeight = 2.1f;
+    [SerializeField] private bool useUpperBodyHitbox = true;
+    [SerializeField] private Vector3 upperBodyHitboxSize = new Vector3(1.4f, 7.5f, 1.4f);
+    [SerializeField] private Vector3 upperBodyHitboxCenter = new Vector3(0f, 7.75f, 0f);
 
     [Header("Grounding")]
     [SerializeField] private float groundCheckRadius = 0.3f;
@@ -40,6 +44,7 @@ public class PlayerLaneController : MonoBehaviour
     private Rigidbody _rigidbody;
     private ModelAnimator _animator;
     private CapsuleCollider _rootCollider;
+    private BoxCollider _upperBodyCollider;
     private Vector2 _moveInput;
     private bool _crouchHeld;
     private bool _isDucking;
@@ -57,6 +62,12 @@ public class PlayerLaneController : MonoBehaviour
         if (_rootCollider == null)
         {
             _rootCollider = gameObject.AddComponent<CapsuleCollider>();
+        }
+
+        _upperBodyCollider = GetComponent<BoxCollider>();
+        if (_upperBodyCollider == null)
+        {
+            _upperBodyCollider = gameObject.AddComponent<BoxCollider>();
         }
 
         DisableChildColliders();
@@ -245,6 +256,8 @@ public class PlayerLaneController : MonoBehaviour
         _rootCollider.radius = localRadius;
         _rootCollider.height = localHeight;
         _rootCollider.center = localCenter;
+
+        ConfigureUpperBodyHitbox(ducking);
     }
 
     private void UpdateFacingDirection()
@@ -359,6 +372,11 @@ public class PlayerLaneController : MonoBehaviour
                 continue;
             }
 
+            if (hit.attachedRigidbody == _rigidbody)
+            {
+                continue;
+            }
+
             if (hit.transform.IsChildOf(transform))
             {
                 continue;
@@ -404,6 +422,11 @@ public class PlayerLaneController : MonoBehaviour
         foreach (Collider hit in hits)
         {
             if (hit == null || hit == _rootCollider)
+            {
+                continue;
+            }
+
+            if (hit.attachedRigidbody == _rigidbody)
             {
                 continue;
             }
@@ -460,6 +483,30 @@ public class PlayerLaneController : MonoBehaviour
         _lastJumpPressedTime = float.NegativeInfinity;
     }
 
+    private void ConfigureUpperBodyHitbox(bool ducking)
+    {
+        if (_upperBodyCollider == null)
+        {
+            return;
+        }
+
+        if (!useUpperBodyHitbox)
+        {
+            _upperBodyCollider.enabled = false;
+            return;
+        }
+
+        _upperBodyCollider.isTrigger = false;
+        _upperBodyCollider.enabled = !ducking;
+        if (!_upperBodyCollider.enabled)
+        {
+            return;
+        }
+
+        _upperBodyCollider.size = GetLocalBoxSize(upperBodyHitboxSize);
+        _upperBodyCollider.center = GetLocalBoxCenter(upperBodyHitboxCenter);
+    }
+
     private Vector3 GetColliderCenterForHeight(float targetHeight, Vector3 sourceCenter)
     {
         float feetOffset = standingColliderCenter.y - (standingColliderHeight * 0.5f);
@@ -494,6 +541,26 @@ public class PlayerLaneController : MonoBehaviour
     {
         Vector3 lossyScale = transform.lossyScale;
         return Mathf.Max(0.0001f, Mathf.Max(Mathf.Abs(lossyScale.x), Mathf.Abs(lossyScale.z)));
+    }
+
+    private Vector3 GetLocalBoxSize(Vector3 worldSize)
+    {
+        float verticalScale = GetVerticalScale();
+        float horizontalScale = GetHorizontalScale();
+        return new Vector3(
+            Mathf.Max(0.05f, worldSize.x / horizontalScale),
+            Mathf.Max(0.05f, worldSize.y / verticalScale),
+            Mathf.Max(0.05f, worldSize.z / horizontalScale));
+    }
+
+    private Vector3 GetLocalBoxCenter(Vector3 worldCenter)
+    {
+        float verticalScale = GetVerticalScale();
+        float horizontalScale = GetHorizontalScale();
+        return new Vector3(
+            worldCenter.x / horizontalScale,
+            worldCenter.y / verticalScale,
+            worldCenter.z / horizontalScale);
     }
 
     private void GetWorldCapsule(
