@@ -14,7 +14,7 @@ public class PlayerLaneController : MonoBehaviour
     [SerializeField] private float airAcceleration = 12f;
     [SerializeField] private float groundDeceleration = 10f;
     [SerializeField] private float airDeceleration = 3f;
-    [SerializeField] private float jumpVelocity = 22f;
+    [SerializeField] private float jumpVelocity = 18f;
     [SerializeField] private float jumpBufferTime = 0.15f;
     [SerializeField] private float coyoteTime = 0.12f;
     [SerializeField] private float rotationLerpSpeed = 14f;
