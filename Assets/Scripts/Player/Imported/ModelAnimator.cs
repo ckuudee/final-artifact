@@ -29,16 +29,14 @@ public class ModelAnimator : MonoBehaviour
     [Header("Animation Settings")]
     public float rotateSpeed = 50f;
     public float walkSpeed = 5f;
-    public float jumpHeight = 1.1f;
+    public float jumpHeight = 0.5f;
     [SerializeField] private float crouchDepth = 0.34f;
     [SerializeField] private float walkLegSwing = 22f;
     [SerializeField] private float walkBounce = 0.025f;
     [SerializeField] private float walkArmSwing = 18f;
-    [SerializeField] private float walkShoulderSwing = 4f;
     [SerializeField] private float walkTorsoCounterSwing = 3.5f;
-    [SerializeField] private float shoulderRestDrop = -8f;
-    [SerializeField] private float armRestDrop = -94f;
-    [SerializeField] private float elbowRestBend = 10f;
+    [SerializeField] private float armRestDrop = -86f;
+    [SerializeField] private float elbowRestBend = 18f;
 
     [Header("Startup")]
     [SerializeField] private AnimationMode startMode = AnimationMode.Idle;
@@ -269,11 +267,8 @@ public class ModelAnimator : MonoBehaviour
         ApplyNaturalArmPose(
             0f,
             0f,
-            0f,
-            0f,
             elbowRestBend,
             elbowRestBend,
-            shoulderRestDrop,
             armRestDrop);
         ApplyRotation(chest, _chestRotation, new Vector3(2f, 0f, 0f));
         ApplyRotation(head, _headRotation, new Vector3(-1f, 0f, 0f));
@@ -304,10 +299,8 @@ public class ModelAnimator : MonoBehaviour
 
         float leftArmForwardSwing = SampleWalkPose(rightPhase, walkArmSwing, walkArmSwing * 0.55f, 0f, -walkArmSwing);
         float rightArmForwardSwing = SampleWalkPose(leftPhase, walkArmSwing, walkArmSwing * 0.55f, 0f, -walkArmSwing);
-        float leftShoulderForwardSwing = SampleWalkPose(rightPhase, walkShoulderSwing, walkShoulderSwing * 0.5f, 0f, -walkShoulderSwing);
-        float rightShoulderForwardSwing = SampleWalkPose(leftPhase, walkShoulderSwing, walkShoulderSwing * 0.5f, 0f, -walkShoulderSwing);
-        float leftForeArmBend = SampleWalkPose(rightPhase, 14f, 18f, 12f, 8f);
-        float rightForeArmBend = SampleWalkPose(leftPhase, 14f, 18f, 12f, 8f);
+        float leftForeArmBend = SampleWalkPose(rightPhase, elbowRestBend + 4f, elbowRestBend + 8f, elbowRestBend + 2f, elbowRestBend - 2f);
+        float rightForeArmBend = SampleWalkPose(leftPhase, elbowRestBend + 4f, elbowRestBend + 8f, elbowRestBend + 2f, elbowRestBend - 2f);
 
         float hipRoll = SampleWalkPose(leftPhase, -2f, -1f, 1f, 2f);
         float torsoRoll = -hipRoll * walkTorsoCounterSwing * 0.75f;
@@ -316,14 +309,11 @@ public class ModelAnimator : MonoBehaviour
 
         ApplyVisualRootOffset(new Vector3(0f, bounce, 0f));
         ApplyNaturalArmPose(
-            leftShoulderForwardSwing,
-            rightShoulderForwardSwing,
             leftArmForwardSwing,
             rightArmForwardSwing,
             leftForeArmBend,
             rightForeArmBend,
-            shoulderRestDrop - 2f,
-            armRestDrop + 2f);
+            armRestDrop);
         ApplyRotation(_hips, _hipsRotation, new Vector3(0f, 0f, hipRoll));
         ApplyRotation(chest, _chestRotation, new Vector3(4f, 0f, torsoRoll));
         ApplyRotation(head, _headRotation, new Vector3(-2f, 0f, headRoll));
@@ -338,14 +328,11 @@ public class ModelAnimator : MonoBehaviour
         float armForwardLift = Mathf.Clamp(jumpHeight * 12f, 8f, 16f);
 
         ApplyNaturalArmPose(
-            armForwardLift * 0.18f,
-            armForwardLift * 0.18f,
             armForwardLift,
             armForwardLift,
-            14f,
-            14f,
-            shoulderRestDrop + 4f,
-            armRestDrop + 18f);
+            elbowRestBend + 6f,
+            elbowRestBend + 6f,
+            armRestDrop + 14f);
         ApplyRotation(_hips, _hipsRotation, new Vector3(8f, 0f, 0f));
         ApplyRotation(chest, _chestRotation, new Vector3(-10f, 0f, 0f));
         ApplyRotation(head, _headRotation, new Vector3(8f, 0f, 0f));
@@ -359,14 +346,11 @@ public class ModelAnimator : MonoBehaviour
     {
         ApplyVisualRootOffset(new Vector3(0f, -crouchDepth, 0f));
         ApplyNaturalArmPose(
-            -4f,
-            -4f,
-            -8f,
-            -8f,
-            24f,
-            24f,
-            shoulderRestDrop + 2f,
-            armRestDrop + 8f);
+            -6f,
+            -6f,
+            elbowRestBend + 12f,
+            elbowRestBend + 12f,
+            armRestDrop + 4f);
         ApplyRotation(_hips, _hipsRotation, new Vector3(12f, 0f, 0f));
         ApplyRotation(chest, _chestRotation, new Vector3(18f, 0f, 0f));
         ApplyRotation(head, _headRotation, new Vector3(-10f, 0f, 0f));
@@ -377,21 +361,18 @@ public class ModelAnimator : MonoBehaviour
     }
 
     private void ApplyNaturalArmPose(
-        float leftShoulderForwardSwing,
-        float rightShoulderForwardSwing,
         float leftArmForwardSwing,
         float rightArmForwardSwing,
         float leftForeArmBend,
         float rightForeArmBend,
-        float shoulderDrop,
         float armDrop)
     {
-        ApplyArmSwingRotation(leftShoulder, _leftShoulderRotation, shoulderDrop, leftShoulderForwardSwing, true);
-        ApplyArmSwingRotation(rightShoulder, _rightShoulderRotation, shoulderDrop, rightShoulderForwardSwing, false);
+        ApplyRotation(leftShoulder, _leftShoulderRotation, Vector3.zero);
+        ApplyRotation(rightShoulder, _rightShoulderRotation, Vector3.zero);
         ApplyArmSwingRotation(leftArm, _leftArmRotation, armDrop, leftArmForwardSwing, true);
         ApplyArmSwingRotation(rightArm, _rightArmRotation, armDrop, rightArmForwardSwing, false);
-        ApplyForeArmBend(_leftForeArm, _leftForeArmRotation, leftForeArmBend, true);
-        ApplyForeArmBend(_rightForeArm, _rightForeArmRotation, rightForeArmBend, false);
+        ApplyForeArmBend(_leftForeArm, _leftForeArmRotation, leftForeArmBend);
+        ApplyForeArmBend(_rightForeArm, _rightForeArmRotation, rightForeArmBend);
     }
 
     private void ApplyVisualRootOffset(Vector3 localOffset)
@@ -435,16 +416,14 @@ public class ModelAnimator : MonoBehaviour
     private static void ApplyForeArmBend(
         Transform target,
         Quaternion baseRotation,
-        float bendAngle,
-        bool isLeftArm)
+        float bendAngle)
     {
         if (target == null)
         {
             return;
         }
 
-        float mirroredBend = isLeftArm ? -bendAngle : bendAngle;
-        target.localRotation = baseRotation * Quaternion.AngleAxis(mirroredBend, Vector3.forward);
+        target.localRotation = baseRotation * Quaternion.AngleAxis(-bendAngle, Vector3.right);
     }
 
     private static float SampleWalkPose(float phase, float contact, float down, float passing, float up)

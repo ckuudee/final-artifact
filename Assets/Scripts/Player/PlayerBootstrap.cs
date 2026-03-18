@@ -66,17 +66,12 @@ public static class PlayerBootstrap
         }
 
         PlayerLaneController controller = player.GetComponent<PlayerLaneController>();
-        bool createdController = false;
         if (controller == null)
         {
             controller = player.AddComponent<PlayerLaneController>();
-            createdController = true;
         }
 
-        if (createdController)
-        {
-            controller.ConfigureFromCurrentPosition();
-        }
+        controller.ConfigureFromCurrentPosition();
     }
 
     private static GameObject FindExistingPlayer()

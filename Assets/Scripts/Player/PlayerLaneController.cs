@@ -2,6 +2,7 @@ using UnityEngine;
 
 [RequireComponent(typeof(ModelAnimator))]
 [RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(CapsuleCollider))]
 public class PlayerLaneController : MonoBehaviour
 {
     private const string LavaObjectName = "lava";
@@ -19,15 +20,16 @@ public class PlayerLaneController : MonoBehaviour
     [SerializeField] private float rotationLerpSpeed = 14f;
 
     [Header("Player Collider")]
+    // Collider settings are authored in world units so they remain correct on the 3x-scaled player.
     [SerializeField] private bool autoFitColliderToRenderers = false;
-    [SerializeField] private float standingColliderHeight = 3.6f;
-    [SerializeField] private float duckingColliderHeight = 1.5f;
-    [SerializeField] private float colliderRadius = 0.42f;
-    [SerializeField] private Vector3 standingColliderCenter = new Vector3(0f, 1.8f, 0f);
-    [SerializeField] private Vector3 duckingColliderCenter = new Vector3(0f, 0.75f, 0f);
-    [SerializeField] private float minimumStandingColliderHeight = 3.6f;
-    [SerializeField] private float duckingHeightFactor = 0.42f;
-    [SerializeField] private float maximumDuckingColliderHeight = 1.6f;
+    [SerializeField] private float standingColliderHeight = 4.2f;
+    [SerializeField] private float duckingColliderHeight = 2.1f;
+    [SerializeField] private float colliderRadius = 0.55f;
+    [SerializeField] private Vector3 standingColliderCenter = new Vector3(0f, 2.1f, 0f);
+    [SerializeField] private Vector3 duckingColliderCenter = new Vector3(0f, 1.05f, 0f);
+    [SerializeField] private float minimumStandingColliderHeight = 4.2f;
+    [SerializeField] private float duckingHeightFactor = 0.5f;
+    [SerializeField] private float maximumDuckingColliderHeight = 2.1f;
 
     [Header("Grounding")]
     [SerializeField] private float groundCheckRadius = 0.3f;
@@ -220,13 +222,19 @@ public class PlayerLaneController : MonoBehaviour
             return;
         }
 
+        GetLocalColliderSettings(
+            ducking ? duckingColliderHeight : standingColliderHeight,
+            ducking ? GetColliderCenterForHeight(duckingColliderHeight, duckingColliderCenter) : GetColliderCenterForHeight(standingColliderHeight, standingColliderCenter),
+            colliderRadius,
+            out float localHeight,
+            out Vector3 localCenter,
+            out float localRadius);
+
         _rootCollider.direction = 1;
         _rootCollider.isTrigger = false;
-        _rootCollider.radius = colliderRadius;
-        _rootCollider.height = ducking ? duckingColliderHeight : standingColliderHeight;
-        _rootCollider.center = ducking
-            ? GetColliderCenterForHeight(duckingColliderHeight, duckingColliderCenter)
-            : GetColliderCenterForHeight(standingColliderHeight, standingColliderCenter);
+        _rootCollider.radius = localRadius;
+        _rootCollider.height = localHeight;
+        _rootCollider.center = localCenter;
     }
 
     private void UpdateFacingDirection()
@@ -294,15 +302,17 @@ public class PlayerLaneController : MonoBehaviour
             return;
         }
 
-        float feetOffset = localBounds.min.y;
-        float diameter = Mathf.Max(localBounds.size.x, localBounds.size.z) * 0.9f;
+        float verticalScale = GetVerticalScale();
+        float horizontalScale = GetHorizontalScale();
+        float feetOffset = localBounds.min.y * verticalScale;
+        float diameter = Mathf.Max(localBounds.size.x, localBounds.size.z) * 0.9f * horizontalScale;
         colliderRadius = Mathf.Max(0.2f, diameter * 0.5f);
-        standingColliderHeight = Mathf.Max(localBounds.size.y * 0.95f, minimumStandingColliderHeight, colliderRadius * 2f + 0.05f);
-        standingColliderCenter = new Vector3(localBounds.center.x, feetOffset + (standingColliderHeight * 0.5f), localBounds.center.z);
+        standingColliderHeight = Mathf.Max(localBounds.size.y * 0.95f * verticalScale, minimumStandingColliderHeight, colliderRadius * 2f + 0.05f);
+        standingColliderCenter = new Vector3(localBounds.center.x * horizontalScale, feetOffset + (standingColliderHeight * 0.5f), localBounds.center.z * horizontalScale);
 
         float desiredDuckingHeight = Mathf.Min(standingColliderHeight * duckingHeightFactor, maximumDuckingColliderHeight);
         duckingColliderHeight = Mathf.Max(desiredDuckingHeight, colliderRadius * 2f + 0.05f);
-        duckingColliderCenter = new Vector3(localBounds.center.x, feetOffset + (duckingColliderHeight * 0.5f), localBounds.center.z);
+        duckingColliderCenter = new Vector3(localBounds.center.x * horizontalScale, feetOffset + (duckingColliderHeight * 0.5f), localBounds.center.z * horizontalScale);
     }
 
     private bool CheckGrounded()
@@ -312,10 +322,18 @@ public class PlayerLaneController : MonoBehaviour
             return false;
         }
 
+        GetLocalColliderSettings(
+            _isDucking ? duckingColliderHeight : standingColliderHeight,
+            _isDucking ? GetColliderCenterForHeight(duckingColliderHeight, duckingColliderCenter) : GetColliderCenterForHeight(standingColliderHeight, standingColliderCenter),
+            colliderRadius,
+            out float localHeight,
+            out Vector3 localCenter,
+            out float localRadius);
+
         GetWorldCapsule(
-            _rootCollider.center,
-            _rootCollider.height,
-            _rootCollider.radius,
+            localCenter,
+            localHeight,
+            localRadius,
             out _,
             out Vector3 bottom,
             out float worldRadius);
@@ -349,10 +367,18 @@ public class PlayerLaneController : MonoBehaviour
             return true;
         }
 
-        GetWorldCapsule(
-            standingColliderCenter,
+        GetLocalColliderSettings(
             standingColliderHeight,
+            GetColliderCenterForHeight(standingColliderHeight, standingColliderCenter),
             colliderRadius,
+            out float localHeight,
+            out Vector3 localCenter,
+            out float localRadius);
+
+        GetWorldCapsule(
+            localCenter,
+            localHeight,
+            localRadius,
             out Vector3 top,
             out Vector3 bottom,
             out float worldRadius);
@@ -400,8 +426,7 @@ public class PlayerLaneController : MonoBehaviour
         RefreshColliderDimensions();
         ApplyColliderState(false);
 
-        float feetOffset = standingColliderCenter.y - (standingColliderHeight * 0.5f);
-        float worldFeetOffset = feetOffset * transform.lossyScale.y;
+        float worldFeetOffset = standingColliderCenter.y - (standingColliderHeight * 0.5f);
         Vector3 worldPosition = new Vector3(
             feetPosition.x,
             feetPosition.y - worldFeetOffset,
@@ -429,6 +454,36 @@ public class PlayerLaneController : MonoBehaviour
     {
         float feetOffset = standingColliderCenter.y - (standingColliderHeight * 0.5f);
         return new Vector3(sourceCenter.x, feetOffset + (targetHeight * 0.5f), sourceCenter.z);
+    }
+
+    private void GetLocalColliderSettings(
+        float worldHeight,
+        Vector3 worldCenter,
+        float worldRadius,
+        out float localHeight,
+        out Vector3 localCenter,
+        out float localRadius)
+    {
+        float verticalScale = GetVerticalScale();
+        float horizontalScale = GetHorizontalScale();
+
+        localRadius = Mathf.Max(0.05f, worldRadius / horizontalScale);
+        localHeight = Mathf.Max(worldHeight / verticalScale, (localRadius * 2f) + 0.05f);
+        localCenter = new Vector3(
+            worldCenter.x / horizontalScale,
+            worldCenter.y / verticalScale,
+            worldCenter.z / horizontalScale);
+    }
+
+    private float GetVerticalScale()
+    {
+        return Mathf.Max(0.0001f, Mathf.Abs(transform.lossyScale.y));
+    }
+
+    private float GetHorizontalScale()
+    {
+        Vector3 lossyScale = transform.lossyScale;
+        return Mathf.Max(0.0001f, Mathf.Max(Mathf.Abs(lossyScale.x), Mathf.Abs(lossyScale.z)));
     }
 
     private void GetWorldCapsule(
