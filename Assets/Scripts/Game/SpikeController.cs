@@ -22,6 +22,11 @@ public class SpikeController : MonoBehaviour
         _rb.isKinematic = true;
         _rb.useGravity = false;
         _rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+
+        if (GetComponent<SpikeVisualGenerator>() == null)
+        {
+            gameObject.AddComponent<SpikeVisualGenerator>();
+        }
     }
 
     private void FixedUpdate()

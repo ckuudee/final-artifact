@@ -14,7 +14,9 @@ public class PlayerLaneController : MonoBehaviour
     [SerializeField] private float airAcceleration = 12f;
     [SerializeField] private float groundDeceleration = 10f;
     [SerializeField] private float airDeceleration = 3f;
-    [SerializeField] private float jumpVelocity = 18f;
+    [SerializeField] private float jumpVelocity = 35f;
+    [SerializeField] private float fallGravityMultiplier = 15.6f;
+    [SerializeField] private float lowJumpGravityMultiplier = 9.1f;
     [SerializeField] private float jumpBufferTime = 0.15f;
     [SerializeField] private float coyoteTime = 0.12f;
     [SerializeField] private float rotationLerpSpeed = 14f;
@@ -185,6 +187,15 @@ public class PlayerLaneController : MonoBehaviour
             _jumpAnimationActive = true;
             _lastJumpPressedTime = float.NegativeInfinity;
             _lastGroundedTime = float.NegativeInfinity;
+        }
+
+        if (velocity.y < 0f)
+        {
+            velocity.y += Physics.gravity.y * (fallGravityMultiplier - 1f) * Time.fixedDeltaTime;
+        }
+        else if (velocity.y > 0f && !Input.GetButton("Jump"))
+        {
+            velocity.y += Physics.gravity.y * (lowJumpGravityMultiplier - 1f) * Time.fixedDeltaTime;
         }
 
         velocity.x = currentHorizontalVelocity.x;

@@ -30,7 +30,8 @@ public class ModelAnimator : MonoBehaviour
     public float rotateSpeed = 50f;
     public float walkSpeed = 5f;
     public float jumpHeight = 0.5f;
-    [SerializeField] private float crouchDepth = 0.34f;
+    [SerializeField] private float crouchDepth = 0.55f;
+    [SerializeField] private float crouchTransitionSpeed = 10f;
     [SerializeField] private float walkLegSwing = 22f;
     [SerializeField] private float walkBounce = 0.025f;
     [SerializeField] private float walkArmSwing = 18f;
@@ -51,6 +52,7 @@ public class ModelAnimator : MonoBehaviour
     private Transform _rightLowerLeg;
     private float _walkTimer;
     private float _rotationAngle;
+    private float _crouchBlend;
     private bool _poseCached;
     private bool _canOffsetVisualRoot;
 
@@ -88,6 +90,9 @@ public class ModelAnimator : MonoBehaviour
 
     private void LateUpdate()
     {
+        float crouchTarget = _mode == AnimationMode.Ducking ? 1f : 0f;
+        _crouchBlend = Mathf.MoveTowards(_crouchBlend, crouchTarget, crouchTransitionSpeed * Time.deltaTime);
+
         CachePose();
         ResetPose();
 
@@ -108,6 +113,11 @@ public class ModelAnimator : MonoBehaviour
             case AnimationMode.Jumping:
                 AnimateJumping();
                 break;
+        }
+
+        if (_mode != AnimationMode.Ducking && _crouchBlend > 0.001f)
+        {
+            ApplyPartialCrouch(_crouchBlend);
         }
     }
 
@@ -344,20 +354,25 @@ public class ModelAnimator : MonoBehaviour
 
     private void AnimateDucking()
     {
-        ApplyVisualRootOffset(new Vector3(0f, -crouchDepth, 0f));
+        ApplyPartialCrouch(_crouchBlend);
+    }
+
+    private void ApplyPartialCrouch(float t)
+    {
+        ApplyVisualRootOffset(new Vector3(0f, -crouchDepth * t, 0f));
         ApplyNaturalArmPose(
-            -6f,
-            -6f,
-            elbowRestBend + 12f,
-            elbowRestBend + 12f,
-            armRestDrop + 4f);
-        ApplyRotation(_hips, _hipsRotation, new Vector3(12f, 0f, 0f));
-        ApplyRotation(chest, _chestRotation, new Vector3(18f, 0f, 0f));
-        ApplyRotation(head, _headRotation, new Vector3(-10f, 0f, 0f));
-        ApplyRotation(leftLeg, _leftLegRotation, new Vector3(-38f, 0f, 0f));
-        ApplyRotation(rightLeg, _rightLegRotation, new Vector3(-38f, 0f, 0f));
-        ApplyRotation(_leftLowerLeg, _leftLowerLegRotation, new Vector3(52f, 0f, 0f));
-        ApplyRotation(_rightLowerLeg, _rightLowerLegRotation, new Vector3(52f, 0f, 0f));
+            Mathf.Lerp(0f, -10f, t),
+            Mathf.Lerp(0f, -10f, t),
+            Mathf.Lerp(elbowRestBend, elbowRestBend + 16f, t),
+            Mathf.Lerp(elbowRestBend, elbowRestBend + 16f, t),
+            Mathf.Lerp(armRestDrop, armRestDrop + 8f, t));
+        ApplyRotation(_hips, _hipsRotation, new Vector3(16f * t, 0f, 0f));
+        ApplyRotation(chest, _chestRotation, new Vector3(22f * t, 0f, 0f));
+        ApplyRotation(head, _headRotation, new Vector3(-14f * t, 0f, 0f));
+        ApplyRotation(leftLeg, _leftLegRotation, new Vector3(-48f * t, 0f, 0f));
+        ApplyRotation(rightLeg, _rightLegRotation, new Vector3(-48f * t, 0f, 0f));
+        ApplyRotation(_leftLowerLeg, _leftLowerLegRotation, new Vector3(64f * t, 0f, 0f));
+        ApplyRotation(_rightLowerLeg, _rightLowerLegRotation, new Vector3(64f * t, 0f, 0f));
     }
 
     private void ApplyNaturalArmPose(

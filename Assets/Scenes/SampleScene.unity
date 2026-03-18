@@ -711,7 +711,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpikeSpawner
   lowerSpikePrefab: {fileID: 3899832215350360764, guid: d05194c7324924421a7d4ec8f4b5e8c0, type: 3}
   upperSpikePrefab: {fileID: 5714056022929570230, guid: 3e8b59596d2314d0794b9c8881268f0a, type: 3}
-  spawnInterval: 2.2
+  spawnInterval: 4
   spawnX: -55
   spawnYRange: {x: 52.3, y: 62}
   spikesParent: {fileID: 0}
